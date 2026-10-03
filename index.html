@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Musical Theater Song Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,600;6..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EFEBF4; --surface:#FFFFFF; --ink:#22162E; --muted:#6A5F75; --line:#D9D1E3;
+  --plum:#6B2D5C; --gold:#C98A1B; --chip:#E4DDEC;
+  --sop:#E9B949; --mez:#D9774A; --alt:#B6455E; --ten:#4E8FB0; --bar:#3E6B8C; --bas:#2E3F66;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1222; --surface:#251B2F; --ink:#F1EAF6; --muted:#A99BB6; --line:#3A2D46;
+    --plum:#D98BC4; --gold:#F0B947; --chip:#33263F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1222; --surface:#251B2F; --ink:#F1EAF6; --muted:#A99BB6; --line:#3A2D46;
+  --plum:#D98BC4; --gold:#F0B947; --chip:#33263F;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
+.wrap{max-width:820px;margin:0 auto;padding:28px 18px 60px}
+header h1{font-family:"Bodoni Moda",Didot,"Times New Roman",serif;font-weight:800;font-size:clamp(2.1rem,7vw,3.4rem);line-height:1.02;margin:0 0 10px;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);max-width:60ch}
+.staff{display:flex;gap:4px;margin:20px 0 6px;height:10px}
+.staff span{flex:1;border-radius:2px}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:14px 0 10px;border-bottom:1px solid var(--line);margin-top:18px}
+.search{width:100%;font:inherit;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.search:focus{outline:none;border-color:var(--plum)}
+.group{display:flex;gap:10px;align-items:baseline;margin-top:10px}
+.group > .lab{font-size:.82rem;color:var(--muted);font-weight:600;min-width:78px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;font-size:.88rem;font-weight:600;white-space:nowrap;border:1.5px solid transparent;background:var(--chip);color:var(--ink);padding:5px 12px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.chip:focus-visible,.search:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.count{margin:16px 0 8px;color:var(--muted);font-size:.9rem;display:flex;justify-content:space-between;gap:10px}
+.count button{font:inherit;font-size:.88rem;background:none;border:none;color:var(--plum);font-weight:600;cursor:pointer;padding:0}
+ul{list-style:none;margin:0;padding:0}
+li.song{background:var(--surface);border-radius:6px;margin-bottom:6px;padding:12px 14px 12px 16px;position:relative;overflow:hidden}
+li.song::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bandc,var(--plum))}
+.t{font-weight:700;font-size:1.04rem;line-height:1.3}
+.s{color:var(--muted);font-size:.92rem}
+.s i{font-style:italic;color:var(--ink)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.tag{font-size:.78rem;font-weight:600;padding:2px 9px;border-radius:5px;background:var(--chip);display:inline-flex;align-items:center;gap:5px}
+.tag.cast{background:transparent;border:1px solid var(--line)}
+.empty{padding:30px 0;color:var(--muted);text-align:center}
+.note{margin-top:30px;font-size:.88rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;max-width:65ch}
+@media (prefers-reduced-motion:no-preference){li.song{animation:in .25s ease both}@keyframes in{from{opacity:0}to{opacity:1}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>The Song Finder</h1>
+  <p>177 well-known musical theater songs, sorted by voice type, number of singers, and how the roles were originally cast. Tap the filters to narrow it down.</p>
+  <div class="staff" aria-hidden="true">
+    <span style="background:var(--sop)"></span><span style="background:var(--mez)"></span><span style="background:var(--alt)"></span><span style="background:var(--ten)"></span><span style="background:var(--bar)"></span><span style="background:var(--bas)"></span>
+  </div>
+</header>
+
+<div class="filters">
+  <input class="search" id="q" type="search" placeholder="Search a song, show, or character" aria-label="Search songs">
+  <div class="group"><span class="lab">Singers</span><div class="chips" id="f-voicing"></div></div>
+  <div class="group"><span class="lab">Written for</span><div class="chips" id="f-gender"></div></div>
+  <div class="group"><span class="lab">Voice type</span><div class="chips" id="f-voice"></div></div>
+  <div class="group"><span class="lab">Style</span><div class="chips" id="f-style"></div></div>
+</div>
+
+<div class="count"><span id="count"></span><button id="reset" type="button">Clear filters</button></div>
+<ul id="list"></ul>
+
+<p class="note">"Written for" reflects how the role was originally cast, not who should sing it. Anyone can sing any song that fits their voice. Voice types are the usual classification for the original key; many songs are published in other keys, so check the sheet music edition against your own range. Duets, trios, and groups are tagged with every voice type involved. Groups (4+) range from small ensembles with named parts to full company numbers, so they work well for class or showcase pieces.</p>
+</div>
+
+<script>
+const VC={Soprano:"var(--sop)",Mezzo:"var(--mez)",Alto:"var(--alt)",Tenor:"var(--ten)",Baritone:"var(--bar)",Bass:"var(--bas)"};
+// [title, show, role(s), voicing, cast, voices, style]
+const D=[
+["I Could Have Danced All Night","My Fair Lady","Eliza","Solo","F",["Soprano"],"Uptempo"],
+["Think of Me","The Phantom of the Opera","Christine","Solo","F",["Soprano"],"Ballad"],
+["Wishing You Were Somehow Here Again","The Phantom of the Opera","Christine","Solo","F",["Soprano"],"Ballad"],
+["Glitter and Be Gay","Candide","Cunegonde","Solo","F",["Soprano"],"Uptempo"],
+["Vanilla Ice Cream","She Loves Me","Amalia","Solo","F",["Soprano"],"Uptempo"],
+["Will He Like Me?","She Loves Me","Amalia","Solo","F",["Soprano"],"Ballad"],
+["Till There Was You","The Music Man","Marian","Solo","F",["Soprano"],"Ballad"],
+["Goodnight, My Someone","The Music Man","Marian","Solo","F",["Soprano"],"Ballad"],
+["The Light in the Piazza","The Light in the Piazza","Clara","Solo","F",["Soprano"],"Ballad"],
+["I Feel Pretty","West Side Story","Maria","Solo","F",["Soprano"],"Uptempo"],
+["Green Finch and Linnet Bird","Sweeney Todd","Johanna","Solo","F",["Soprano"],"Ballad"],
+["Popular","Wicked","Glinda","Solo","F",["Soprano"],"Uptempo"],
+["In My Own Little Corner","Cinderella (Rodgers & Hammerstein)","Cinderella","Solo","F",["Soprano"],"Uptempo"],
+["Home","Beauty and the Beast","Belle","Solo","F",["Soprano"],"Ballad"],
+["Once Upon a December","Anastasia","Anya","Solo","F",["Soprano"],"Ballad"],
+["Much More","The Fantasticks","Luisa","Solo","F",["Soprano"],"Uptempo"],
+["On the Steps of the Palace","Into the Woods","Cinderella","Solo","F",["Soprano"],"Uptempo"],
+["Climb Ev'ry Mountain","The Sound of Music","Mother Abbess","Solo","F",["Soprano"],"Ballad"],
+["Mister Snow","Carousel","Carrie","Solo","F",["Soprano"],"Uptempo"],
+["Many a New Day","Oklahoma!","Laurey","Solo","F",["Soprano"],"Uptempo"],
+["Art Is Calling for Me","The Enchantress","Lucy","Solo","F",["Soprano"],"Uptempo"],
+["Defying Gravity","Wicked","Elphaba","Solo","F",["Mezzo"],"Uptempo"],
+["The Wizard and I","Wicked","Elphaba","Solo","F",["Mezzo"],"Uptempo"],
+["I'm Not That Girl","Wicked","Elphaba","Solo","F",["Mezzo"],"Ballad"],
+["On My Own","Les Misérables","Éponine","Solo","F",["Mezzo"],"Ballad"],
+["I Dreamed a Dream","Les Misérables","Fantine","Solo","F",["Mezzo"],"Ballad"],
+["Memory","Cats","Grizabella","Solo","F",["Mezzo"],"Ballad"],
+["Don't Rain on My Parade","Funny Girl","Fanny","Solo","F",["Mezzo"],"Uptempo"],
+["People","Funny Girl","Fanny","Solo","F",["Mezzo"],"Ballad"],
+["Maybe This Time","Cabaret","Sally","Solo","F",["Mezzo"],"Ballad"],
+["Astonishing","Little Women","Jo","Solo","F",["Mezzo"],"Uptempo"],
+["She Used to Be Mine","Waitress","Jenna","Solo","F",["Mezzo"],"Ballad"],
+["Gimme Gimme","Thoroughly Modern Millie","Millie","Solo","F",["Mezzo"],"Uptempo"],
+["Burn","Hamilton","Eliza","Solo","F",["Mezzo"],"Ballad"],
+["Satisfied","Hamilton","Angelica","Solo","F",["Mezzo"],"Uptempo"],
+["Journey to the Past","Anastasia","Anya","Solo","F",["Mezzo"],"Uptempo"],
+["So Much Better","Legally Blonde","Elle","Solo","F",["Mezzo"],"Uptempo"],
+["So Big/So Small","Dear Evan Hansen","Heidi","Solo","F",["Mezzo"],"Ballad"],
+["Breathe","In the Heights","Nina","Solo","F",["Mezzo"],"Ballad"],
+["I Know Things Now","Into the Woods","Little Red","Solo","F",["Mezzo"],"Uptempo"],
+["Moments in the Woods","Into the Woods","Baker's Wife","Solo","F",["Mezzo"],"Ballad"],
+["Still Hurting","The Last Five Years","Cathy","Solo","F",["Mezzo"],"Ballad"],
+["I Can Hear the Bells","Hairspray","Tracy","Solo","F",["Mezzo"],"Uptempo"],
+["Good Morning Baltimore","Hairspray","Tracy","Solo","F",["Mezzo"],"Uptempo"],
+["Heart of Stone","SIX","Jane Seymour","Solo","F",["Mezzo"],"Ballad"],
+["Dead Mom","Beetlejuice","Lydia","Solo","F",["Mezzo"],"Uptempo"],
+["Waiting for Life","Once on This Island","Ti Moune","Solo","F",["Mezzo"],"Uptempo"],
+["Part of Your World","The Little Mermaid","Ariel","Solo","F",["Mezzo"],"Ballad"],
+["Somewhere That's Green","Little Shop of Horrors","Audrey","Solo","F",["Mezzo"],"Ballad"],
+["Show Me","My Fair Lady","Eliza","Solo","F",["Mezzo"],"Uptempo"],
+["Watch What Happens","Newsies","Katherine","Solo","F",["Mezzo"],"Uptempo"],
+["Out Tonight","Rent","Mimi","Solo","F",["Mezzo"],"Uptempo"],
+["Shy","Once Upon a Mattress","Winnifred","Solo","F",["Mezzo"],"Uptempo"],
+["Nothing","A Chorus Line","Diana","Solo","F",["Mezzo"],"Uptempo"],
+["What I Did for Love","A Chorus Line","Diana","Solo","F",["Mezzo"],"Ballad"],
+["Adelaide's Lament","Guys and Dolls","Adelaide","Solo","F",["Mezzo"],"Uptempo"],
+["Roxie","Chicago","Roxie","Solo","F",["Mezzo"],"Uptempo"],
+["Life of the Party","The Wild Party (LaChiusa)","Queenie","Solo","F",["Mezzo"],"Uptempo"],
+["Send in the Clowns","A Little Night Music","Desirée","Solo","F",["Alto"],"Ballad"],
+["The Ladies Who Lunch","Company","Joanne","Solo","F",["Alto"],"Uptempo"],
+["Everything's Coming Up Roses","Gypsy","Rose","Solo","F",["Alto"],"Uptempo"],
+["Rose's Turn","Gypsy","Rose","Solo","F",["Alto"],"Uptempo"],
+["All That Jazz","Chicago","Velma","Solo","F",["Alto"],"Uptempo"],
+["Cabaret","Cabaret","Sally","Solo","F",["Alto"],"Uptempo"],
+["Stay with Me","Into the Woods","The Witch","Solo","F",["Alto"],"Ballad"],
+["Bring Him Home","Les Misérables","Valjean","Solo","M",["Tenor"],"Ballad"],
+["Empty Chairs at Empty Tables","Les Misérables","Marius","Solo","M",["Tenor"],"Ballad"],
+["Waving Through a Window","Dear Evan Hansen","Evan","Solo","M",["Tenor"],"Uptempo"],
+["For Forever","Dear Evan Hansen","Evan","Solo","M",["Tenor"],"Ballad"],
+["Santa Fe","Newsies","Jack","Solo","M",["Tenor"],"Uptempo"],
+["Maria","West Side Story","Tony","Solo","M",["Tenor"],"Ballad"],
+["Something's Coming","West Side Story","Tony","Solo","M",["Tenor"],"Uptempo"],
+["Corner of the Sky","Pippin","Pippin","Solo","M",["Tenor"],"Uptempo"],
+["Proud of Your Boy","Aladdin","Aladdin","Solo","M",["Tenor"],"Ballad"],
+["Lost in the Wilderness","Children of Eden","Cain","Solo","M",["Tenor"],"Uptempo"],
+["Johanna","Sweeney Todd","Anthony","Solo","M",["Tenor"],"Ballad"],
+["On the Street Where You Live","My Fair Lady","Freddy","Solo","M",["Tenor"],"Ballad"],
+["Gethsemane","Jesus Christ Superstar","Jesus","Solo","M",["Tenor"],"Ballad"],
+["Heaven on Their Minds","Jesus Christ Superstar","Judas","Solo","M",["Tenor"],"Uptempo"],
+["Moving Too Fast","The Last Five Years","Jamie","Solo","M",["Tenor"],"Uptempo"],
+["Her Voice","The Little Mermaid","Prince Eric","Solo","M",["Tenor"],"Ballad"],
+["One Song Glory","Rent","Roger","Solo","M",["Tenor"],"Ballad"],
+["Why, God, Why?","Miss Saigon","Chris","Solo","M",["Tenor"],"Ballad"],
+["Michael in the Bathroom","Be More Chill","Michael","Solo","M",["Tenor"],"Uptempo"],
+["Giants in the Sky","Into the Woods","Jack","Solo","M",["Tenor"],"Uptempo"],
+["Close Every Door","Joseph and the Amazing Technicolor Dreamcoat","Joseph","Solo","M",["Tenor"],"Ballad"],
+["Willkommen","Cabaret","Emcee","Solo","M",["Tenor"],"Uptempo"],
+["Grow for Me","Little Shop of Horrors","Seymour","Solo","M",["Tenor"],"Uptempo"],
+["Wait for Me","Hadestown","Orpheus","Solo","M",["Tenor"],"Ballad"],
+["Sit Down, You're Rockin' the Boat","Guys and Dolls","Nicely-Nicely","Solo","M",["Tenor"],"Uptempo"],
+["I Believe","The Book of Mormon","Elder Price","Solo","M",["Tenor"],"Uptempo"],
+["Wait for It","Hamilton","Burr","Solo","M",["Tenor","Baritone"],"Ballad"],
+["Stars","Les Misérables","Javert","Solo","M",["Baritone"],"Ballad"],
+["The Music of the Night","The Phantom of the Opera","The Phantom","Solo","M",["Baritone"],"Ballad"],
+["If I Can't Love Her","Beauty and the Beast","Beast","Solo","M",["Baritone"],"Ballad"],
+["This Is the Moment","Jekyll & Hyde","Jekyll","Solo","M",["Baritone"],"Ballad"],
+["Oh, What a Beautiful Mornin'","Oklahoma!","Curly","Solo","M",["Baritone"],"Ballad"],
+["Soliloquy","Carousel","Billy","Solo","M",["Baritone"],"Ballad"],
+["The Impossible Dream","Man of La Mancha","Don Quixote","Solo","M",["Baritone"],"Ballad"],
+["Luck Be a Lady","Guys and Dolls","Sky","Solo","M",["Baritone"],"Uptempo"],
+["Ya Got Trouble","The Music Man","Harold Hill","Solo","M",["Baritone"],"Uptempo"],
+["Reviewing the Situation","Oliver!","Fagin","Solo","M",["Baritone"],"Uptempo"],
+["Dust and Ashes","Natasha, Pierre & The Great Comet of 1812","Pierre","Solo","M",["Baritone"],"Ballad"],
+["If I Didn't Believe in You","The Last Five Years","Jamie","Solo","M",["Baritone"],"Ballad"],
+["Shiksa Goddess","The Last Five Years","Jamie","Solo","M",["Tenor","Baritone"],"Uptempo"],
+["You'll Be Back","Hamilton","King George","Solo","M",["Baritone"],"Uptempo"],
+["The Room Where It Happens","Hamilton","Burr","Solo","M",["Baritone"],"Uptempo"],
+["Anthem","Chess","Anatoly","Solo","M",["Baritone"],"Ballad"],
+["Mister Cellophane","Chicago","Amos","Solo","M",["Baritone"],"Ballad"],
+["Being Alive","Company","Bobby","Solo","M",["Baritone"],"Ballad"],
+["She Loves Me","She Loves Me","Georg","Solo","M",["Tenor","Baritone"],"Uptempo"],
+["Edelweiss","The Sound of Music","Captain von Trapp","Solo","M",["Baritone"],"Ballad"],
+["Make Them Hear You","Ragtime","Coalhouse","Solo","M",["Baritone"],"Ballad"],
+["Epiphany","Sweeney Todd","Sweeney","Solo","M",["Baritone"],"Uptempo"],
+["Any Dream Will Do","Joseph and the Amazing Technicolor Dreamcoat","Joseph","Solo","M",["Tenor","Baritone"],"Uptempo"],
+["Ol' Man River","Show Boat","Joe","Solo","M",["Bass"],"Ballad"],
+["Some Enchanted Evening","South Pacific","Emile","Solo","M",["Bass","Baritone"],"Ballad"],
+["If I Were a Rich Man","Fiddler on the Roof","Tevye","Solo","M",["Bass","Baritone"],"Uptempo"],
+["All I Ask of You","The Phantom of the Opera","Raoul & Christine","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["The Phantom of the Opera","The Phantom of the Opera","Phantom & Christine","Duet","F + M",["Soprano","Baritone"],"Uptempo"],
+["Tonight","West Side Story","Tony & Maria","Duet","F + M",["Soprano","Tenor"],"Ballad"],
+["One Hand, One Heart","West Side Story","Tony & Maria","Duet","F + M",["Soprano","Tenor"],"Ballad"],
+["A Boy Like That / I Have a Love","West Side Story","Anita & Maria","Duet","F + F",["Mezzo","Soprano"],"Ballad"],
+["As Long As You're Mine","Wicked","Elphaba & Fiyero","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["What Is This Feeling?","Wicked","Elphaba & Glinda","Duet","F + F",["Mezzo","Soprano"],"Uptempo"],
+["For Good","Wicked","Elphaba & Glinda","Duet","F + F",["Mezzo","Soprano"],"Ballad"],
+["If I Loved You","Carousel","Billy & Julie","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["People Will Say We're in Love","Oklahoma!","Curly & Laurey","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["Sixteen Going on Seventeen","The Sound of Music","Liesl & Rolf","Duet","F + M",["Mezzo","Baritone"],"Uptempo"],
+["The Next Ten Minutes","The Last Five Years","Jamie & Cathy","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Suddenly Seymour","Little Shop of Horrors","Seymour & Audrey","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Something There","Beauty and the Beast","Belle & Beast","Duet","F + M",["Soprano","Baritone"],"Uptempo"],
+["A Whole New World","Aladdin","Aladdin & Jasmine","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Sue Me","Guys and Dolls","Nathan & Adelaide","Duet","F + M",["Mezzo","Baritone"],"Uptempo"],
+["Marry the Man Today","Guys and Dolls","Adelaide & Sarah","Duet","F + F",["Mezzo","Soprano"],"Uptempo"],
+["Anything You Can Do","Annie Get Your Gun","Annie & Frank","Duet","F + M",["Mezzo","Baritone"],"Uptempo"],
+["It Takes Two","Into the Woods","The Baker & Baker's Wife","Duet","F + M",["Mezzo","Baritone"],"Uptempo"],
+["Agony","Into the Woods","The two Princes","Duet","M + M",["Tenor","Baritone"],"Uptempo"],
+["Wunderbar","Kiss Me, Kate","Fred & Lilli","Duet","F + M",["Soprano","Baritone"],"Uptempo"],
+["Brush Up Your Shakespeare","Kiss Me, Kate","The two Gangsters","Duet","M + M",["Baritone"],"Uptempo"],
+["The Word of Your Body","Spring Awakening","Melchior & Wendla","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Only Us","Dear Evan Hansen","Evan & Zoe","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["You Matter to Me","Waitress","Jenna & Dr. Pomatter","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Serious","Legally Blonde","Elle & Warner","Duet","F + M",["Mezzo","Tenor"],"Uptempo"],
+["All I've Ever Known","Hadestown","Eurydice & Orpheus","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["You and Me (But Mostly Me)","The Book of Mormon","Elder Price & Elder Cunningham","Duet","M + M",["Tenor","Baritone"],"Uptempo"],
+["Dear Theodosia","Hamilton","Burr & Hamilton","Duet","M + M",["Tenor","Baritone"],"Ballad"],
+["Take Me or Leave Me","Rent","Maureen & Joanne","Duet","F + F",["Mezzo","Alto"],"Uptempo"],
+["Light My Candle","Rent","Roger & Mimi","Duet","F + M",["Mezzo","Tenor"],"Uptempo"],
+["What You Own","Rent","Mark & Roger","Duet","M + M",["Tenor"],"Uptempo"],
+["I'll Cover You","Rent","Collins & Angel","Duet","M + M",["Baritone","Tenor"],"Uptempo"],
+["Barcelona","Company","Bobby & April","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["A Little Priest","Sweeney Todd","Sweeney & Mrs. Lovett","Duet","F + M",["Alto","Baritone"],"Uptempo"],
+["Pretty Women","Sweeney Todd","Sweeney & Judge Turpin","Duet","M + M",["Baritone","Bass"],"Ballad"],
+["In His Eyes","Jekyll & Hyde","Emma & Lucy","Duet","F + F",["Soprano","Mezzo"],"Ballad"],
+["I Think I Got You Beat","Shrek the Musical","Shrek & Fiona","Duet","F + M",["Mezzo","Baritone"],"Uptempo"],
+["Class","Chicago","Velma & Mama Morton","Duet","F + F",["Alto"],"Uptempo"],
+["Nowadays","Chicago","Roxie & Velma","Duet","F + F",["Mezzo","Alto"],"Uptempo"],
+["If You Were Gay","Avenue Q","Nicky & Rod","Duet","M + M",["Baritone","Tenor"],"Uptempo"],
+["Moses Supposes","Singin' in the Rain","Don & Cosmo","Duet","M + M",["Baritone","Tenor"],"Uptempo"],
+["Falling Slowly","Once","Guy & Girl","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Sincerely, Me","Dear Evan Hansen","Evan, Connor & Jared","Trio","M + M + M",["Tenor"],"Uptempo"],
+["Requiem","Dear Evan Hansen","Zoe, Cynthia & Larry","Trio","F + F + M",["Mezzo","Baritone"],"Ballad"],
+["A Heart Full of Love","Les Misérables","Marius, Cosette & Éponine","Trio","F + F + M",["Soprano","Mezzo","Tenor"],"Ballad"],
+["The Schuyler Sisters","Hamilton","Angelica, Eliza & Peggy","Trio","F + F + F",["Mezzo","Soprano"],"Uptempo"],
+["Matchmaker","Fiddler on the Roof","Tzeitel, Hodel & Chava","Trio","F + F + F",["Soprano","Mezzo"],"Uptempo"],
+["Fugue for Tinhorns","Guys and Dolls","Nicely-Nicely, Benny & Rusty","Trio","M + M + M",["Tenor","Baritone"],"Uptempo"],
+["Dancing Queen","Mamma Mia!","Donna, Tanya & Rosie","Trio","F + F + F",["Mezzo","Alto"],"Uptempo"],
+["Candy Store","Heathers","The three Heathers","Trio","F + F + F",["Mezzo"],"Uptempo"],
+["Little Shop of Horrors","Little Shop of Horrors","Ronnette, Crystal & Chiffon","Trio","F + F + F",["Mezzo","Alto"],"Uptempo"],
+["You Gotta Get a Gimmick","Gypsy","Mazeppa, Electra & Tessie","Trio","F + F + F",["Alto","Mezzo"],"Uptempo"],
+["At the Ballet","A Chorus Line","Sheila, Bebe & Maggie","Trio","F + F + F",["Alto","Mezzo","Soprano"],"Ballad"],
+["Easy Street","Annie","Miss Hannigan, Rooster & Lily","Trio","F + F + M",["Alto","Mezzo","Baritone"],"Uptempo"],
+["Old Friends","Merrily We Roll Along","Mary, Frank & Charley","Trio","F + M + M",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["I Am the One","Next to Normal","Diana, Dan & Gabe","Trio","F + M + M",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["Good Morning","Singin' in the Rain","Kathy, Don & Cosmo","Trio","F + M + M",["Soprano","Tenor","Baritone"],"Uptempo"],
+["Three Little Maids from School","The Mikado","Yum-Yum, Pitti-Sing & Peep-Bo","Trio","F + F + F",["Soprano","Mezzo"],"Uptempo"],
+["Let It Go","Frozen","Elsa","Solo","F",["Mezzo"],"Uptempo"],
+["Dangerous to Dream","Frozen","Elsa","Solo","F",["Mezzo"],"Ballad"],
+["For the First Time in Forever","Frozen","Anna & Elsa","Duet","F + F",["Soprano","Mezzo"],"Uptempo"],
+["Love Is an Open Door","Frozen","Anna & Hans","Duet","F + M",["Soprano","Tenor"],"Uptempo"],
+["A Change in Me","Beauty and the Beast","Belle","Solo","F",["Soprano"],"Ballad"],
+["Practically Perfect","Mary Poppins","Mary","Solo","F",["Soprano"],"Uptempo"],
+["The Sound of Music","The Sound of Music","Maria","Solo","F",["Soprano"],"Ballad"],
+["Hello, Young Lovers","The King and I","Anna","Solo","F",["Soprano"],"Ballad"],
+["Getting to Know You","The King and I","Anna","Solo","F",["Soprano"],"Uptempo"],
+["A Cockeyed Optimist","South Pacific","Nellie","Solo","F",["Mezzo"],"Uptempo"],
+["I'm in Love with a Wonderful Guy","South Pacific","Nellie","Solo","F",["Mezzo"],"Uptempo"],
+["What's the Use of Wond'rin'","Carousel","Julie","Solo","F",["Soprano"],"Ballad"],
+["You'll Never Walk Alone","Carousel","Nettie","Solo","F",["Mezzo"],"Ballad"],
+["Out of My Dreams","Oklahoma!","Laurey","Solo","F",["Soprano"],"Ballad"],
+["Wouldn't It Be Loverly","My Fair Lady","Eliza","Solo","F",["Soprano"],"Uptempo"],
+["Ring of Keys","Fun Home","Small Alison","Solo","F",["Mezzo"],"Ballad"],
+["Changing My Major","Fun Home","Medium Alison","Solo","F",["Mezzo"],"Uptempo"],
+["Disneyland","Smile","Doria","Solo","F",["Mezzo"],"Ballad"],
+["Tomorrow","Annie","Annie","Solo","F",["Mezzo"],"Uptempo"],
+["Maybe","Annie","Annie","Solo","F",["Mezzo"],"Ballad"],
+["Little Girls","Annie","Miss Hannigan","Solo","F",["Alto"],"Uptempo"],
+["Naughty","Matilda","Matilda","Solo","F",["Mezzo"],"Uptempo"],
+["Quiet","Matilda","Matilda","Solo","F",["Mezzo"],"Ballad"],
+["My House","Matilda","Miss Honey","Solo","F",["Soprano"],"Ballad"],
+["Pulled","The Addams Family","Wednesday","Solo","F",["Mezzo"],"Uptempo"],
+["Happy/Sad","The Addams Family","Gomez","Solo","M",["Baritone"],"Ballad"],
+["Mamma Mia","Mamma Mia!","Donna","Solo","F",["Mezzo"],"Uptempo"],
+["The Winner Takes It All","Mamma Mia!","Donna","Solo","F",["Mezzo"],"Ballad"],
+["Slipping Through My Fingers","Mamma Mia!","Donna & Sophie","Duet","F + F",["Mezzo","Soprano"],"Ballad"],
+["Hopelessly Devoted to You","Grease","Sandy","Solo","F",["Mezzo"],"Ballad"],
+["There Are Worse Things I Could Do","Grease","Rizzo","Solo","F",["Alto"],"Ballad"],
+["Look at Me, I'm Sandra Dee","Grease","Rizzo","Solo","F",["Alto"],"Uptempo"],
+["Beauty School Dropout","Grease","Teen Angel","Solo","M",["Tenor"],"Uptempo"],
+["Stupid with Love","Mean Girls","Cady","Solo","F",["Mezzo"],"Uptempo"],
+["World Burn","Mean Girls","Regina","Solo","F",["Mezzo"],"Uptempo"],
+["I'd Rather Be Me","Mean Girls","Janis","Solo","F",["Mezzo"],"Uptempo"],
+["What's Wrong with Me?","Mean Girls","Gretchen","Solo","F",["Mezzo"],"Ballad"],
+["No Way","SIX","Catherine of Aragon","Solo","F",["Alto"],"Uptempo"],
+["Don't Lose Ur Head","SIX","Anne Boleyn","Solo","F",["Mezzo"],"Uptempo"],
+["Get Down","SIX","Anna of Cleves","Solo","F",["Alto"],"Uptempo"],
+["All You Wanna Do","SIX","Katherine Howard","Solo","F",["Mezzo"],"Uptempo"],
+["I Don't Need Your Love","SIX","Catherine Parr","Solo","F",["Mezzo"],"Ballad"],
+["Flowers","Hadestown","Eurydice","Solo","F",["Mezzo"],"Ballad"],
+["Our Lady of the Underground","Hadestown","Persephone","Solo","F",["Alto"],"Uptempo"],
+["Why We Build the Wall","Hadestown","Hades","Solo","M",["Bass"],"Uptempo"],
+["When He Sees Me","Waitress","Dawn","Solo","F",["Mezzo"],"Uptempo"],
+["What Baking Can Do","Waitress","Jenna","Solo","F",["Mezzo"],"Ballad"],
+["I Love You Like a Table","Waitress","Ogie","Solo","M",["Tenor"],"Uptempo"],
+["Father Time","Kimberly Akimbo","Kimberly","Solo","F",["Mezzo"],"Ballad"],
+["Me and the Sky","Come From Away","Beverley","Solo","F",["Alto"],"Uptempo"],
+["Words Fail","Dear Evan Hansen","Evan","Solo","M",["Tenor"],"Ballad"],
+["Anybody Have a Map?","Dear Evan Hansen","Heidi & Cynthia","Duet","F + F",["Mezzo"],"Uptempo"],
+["I Miss the Mountains","Next to Normal","Diana","Solo","F",["Mezzo"],"Ballad"],
+["Superboy and the Invisible Girl","Next to Normal","Natalie","Solo","F",["Mezzo"],"Uptempo"],
+["I'm Alive","Next to Normal","Gabe","Solo","M",["Tenor"],"Uptempo"],
+["Perfect for You","Next to Normal","Natalie & Henry","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Mama Who Bore Me","Spring Awakening","Wendla","Solo","F",["Mezzo"],"Ballad"],
+["And Then There Were None","Spring Awakening","Moritz","Solo","M",["Tenor"],"Uptempo"],
+["Left Behind","Spring Awakening","Melchior","Solo","M",["Tenor"],"Ballad"],
+["Helpless","Hamilton","Eliza","Solo","F",["Mezzo"],"Uptempo"],
+["Hurricane","Hamilton","Hamilton","Solo","M",["Baritone"],"Ballad"],
+["One Last Time","Hamilton","Washington","Solo","M",["Baritone"],"Ballad"],
+["It Won't Be Long Now","In the Heights","Vanessa","Solo","F",["Mezzo"],"Uptempo"],
+["Paciencia y Fe","In the Heights","Abuela Claudia","Solo","F",["Alto"],"Uptempo"],
+["When You're Home","In the Heights","Nina & Benny","Duet","F + M",["Mezzo","Tenor"],"Uptempo"],
+["No Good Deed","Wicked","Elphaba","Solo","F",["Mezzo"],"Uptempo"],
+["Thank Goodness","Wicked","Glinda","Solo","F",["Soprano"],"Ballad"],
+["Dancing Through Life","Wicked","Fiyero","Solo","M",["Tenor"],"Uptempo"],
+["Wonderful","Wicked","The Wizard","Solo","M",["Baritone"],"Uptempo"],
+["Who Am I?","Les Misérables","Valjean","Solo","M",["Tenor","Baritone"],"Uptempo"],
+["Master of the House","Les Misérables","Thénardier","Solo","M",["Baritone"],"Uptempo"],
+["Castle on a Cloud","Les Misérables","Young Cosette","Solo","F",["Soprano"],"Ballad"],
+["The Point of No Return","The Phantom of the Opera","Phantom & Christine","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["The Last Night of the World","Miss Saigon","Kim & Chris","Duet","F + M",["Soprano","Tenor"],"Ballad"],
+["I'd Give My Life for You","Miss Saigon","Kim","Solo","F",["Mezzo"],"Ballad"],
+["Don't Cry for Me Argentina","Evita","Eva","Solo","F",["Mezzo"],"Ballad"],
+["Another Suitcase in Another Hall","Evita","Mistress","Solo","F",["Mezzo"],"Ballad"],
+["I Don't Know How to Love Him","Jesus Christ Superstar","Mary Magdalene","Solo","F",["Mezzo"],"Ballad"],
+["Can't Take My Eyes Off You","Jersey Boys","Frankie Valli","Solo","M",["Tenor"],"Uptempo"],
+["Something to Believe In","Newsies","Jack & Katherine","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Friend Like Me","Aladdin","Genie","Solo","M",["Baritone"],"Uptempo"],
+["Endless Night","The Lion King","Simba","Solo","M",["Tenor"],"Ballad"],
+["Shadowland","The Lion King","Nala","Solo","F",["Mezzo"],"Ballad"],
+["They Live in You","The Lion King","Mufasa","Solo","M",["Bass"],"Ballad"],
+["Out There","The Hunchback of Notre Dame","Quasimodo","Solo","M",["Tenor"],"Uptempo"],
+["God Help the Outcasts","The Hunchback of Notre Dame","Esmeralda","Solo","F",["Mezzo"],"Ballad"],
+["Hellfire","The Hunchback of Notre Dame","Frollo","Solo","M",["Baritone"],"Ballad"],
+["Who I'd Be","Shrek the Musical","Shrek","Solo","M",["Baritone"],"Ballad"],
+["I Know It's Today","Shrek the Musical","Young, Teen & Adult Fiona","Trio","F + F + F",["Soprano","Mezzo"],"Uptempo"],
+["Hard to Be the Bard","Something Rotten!","Shakespeare","Solo","M",["Tenor","Baritone"],"Uptempo"],
+["Where Did the Rock Go?","School of Rock","Rosalie","Solo","F",["Soprano"],"Ballad"],
+["The History of Wrong Guys","Kinky Boots","Lauren","Solo","F",["Mezzo"],"Uptempo"],
+["Hold Me in Your Heart","Kinky Boots","Lola","Solo","M",["Tenor"],"Ballad"],
+["Not My Father's Son","Kinky Boots","Lola & Charlie","Duet","M + M",["Tenor","Baritone"],"Ballad"],
+["Just Breathe","The Prom","Emma","Solo","F",["Mezzo"],"Uptempo"],
+["Dance with You","The Prom","Emma & Alyssa","Duet","F + F",["Mezzo"],"Ballad"],
+["Put On a Happy Face","Bye Bye Birdie","Albert","Solo","M",["Baritone"],"Uptempo"],
+["How Lovely to Be a Woman","Bye Bye Birdie","Kim","Solo","F",["Soprano"],"Uptempo"],
+["Before the Parade Passes By","Hello, Dolly!","Dolly","Solo","F",["Alto"],"Uptempo"],
+["Ribbons Down My Back","Hello, Dolly!","Irene","Solo","F",["Soprano"],"Ballad"],
+["It Only Takes a Moment","Hello, Dolly!","Cornelius","Solo","M",["Tenor"],"Ballad"],
+["Day by Day","Godspell","Robin","Solo","F",["Mezzo"],"Uptempo"],
+["All Good Gifts","Godspell","Lamar","Solo","M",["Tenor"],"Ballad"],
+["No Time at All","Pippin","Berthe","Solo","F",["Alto"],"Uptempo"],
+["Purpose","Avenue Q","Princeton","Solo","M",["Tenor"],"Uptempo"],
+["There's a Fine, Fine Line","Avenue Q","Kate Monster","Solo","F",["Mezzo"],"Ballad"],
+["Sal Tlay Ka Siti","The Book of Mormon","Nabulungi","Solo","F",["Mezzo"],"Ballad"],
+["Turn It Off","The Book of Mormon","Elder McKinley","Solo","M",["Tenor"],"Uptempo"],
+["Seventeen","Heathers","Veronica & JD","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Kindergarten Boyfriend","Heathers","Martha","Solo","F",["Mezzo"],"Ballad"],
+["Freeze Your Brain","Heathers","JD","Solo","M",["Tenor"],"Uptempo"],
+["Last Midnight","Into the Woods","The Witch","Solo","F",["Alto"],"Uptempo"],
+["Children Will Listen","Into the Woods","The Witch","Solo","F",["Alto"],"Ballad"],
+["The Worst Pies in London","Sweeney Todd","Mrs. Lovett","Solo","F",["Alto"],"Uptempo"],
+["Not While I'm Around","Sweeney Todd","Tobias & Mrs. Lovett","Duet","F + M",["Alto","Tenor"],"Ballad"],
+["Getting Married Today","Company","Amy","Solo","F",["Mezzo"],"Uptempo"],
+["Another Hundred People","Company","Marta","Solo","F",["Mezzo"],"Uptempo"],
+["Some Things Are Meant to Be","Little Women","Jo & Beth","Duet","F + F",["Mezzo","Soprano"],"Ballad"],
+["My Petersburg","Anastasia","Dmitry","Solo","M",["Tenor"],"Uptempo"],
+["I'm the Greatest Star","Funny Girl","Fanny","Solo","F",["Mezzo"],"Uptempo"],
+["Some People","Gypsy","Rose","Solo","F",["Alto"],"Uptempo"],
+["Together, Wherever We Go","Gypsy","Rose, Herbie & Louise","Trio","F + F + M",["Alto","Mezzo","Baritone"],"Uptempo"],
+["Where Is Love?","Oliver!","Oliver","Solo","M",["Soprano"],"Ballad"],
+["As Long as He Needs Me","Oliver!","Nancy","Solo","F",["Mezzo"],"Ballad"],
+["I Can Do That","A Chorus Line","Mike","Solo","M",["Tenor"],"Uptempo"],
+["I Know Where I've Been","Hairspray","Motormouth Maybelle","Solo","F",["Alto"],"Ballad"],
+["It Takes Two","Hairspray","Link","Solo","M",["Tenor"],"Ballad"],
+["Run and Tell That","Hairspray","Seaweed","Solo","M",["Tenor"],"Uptempo"],
+["If I Were a Bell","Guys and Dolls","Sarah","Solo","F",["Soprano"],"Uptempo"],
+["I'll Know","Guys and Dolls","Sarah & Sky","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["Far from the Home I Love","Fiddler on the Roof","Hodel","Solo","F",["Mezzo"],"Ballad"],
+["Do You Love Me?","Fiddler on the Roof","Tevye & Golde","Duet","F + M",["Alto","Baritone"],"Ballad"],
+["Can't Help Lovin' Dat Man","Show Boat","Julie","Solo","F",["Mezzo"],"Ballad"],
+["Make Believe","Show Boat","Magnolia & Ravenal","Duet","F + M",["Soprano","Baritone"],"Ballad"],
+["Back to Before","Ragtime","Mother","Solo","F",["Mezzo"],"Ballad"],
+["Wheels of a Dream","Ragtime","Coalhouse & Sarah","Duet","F + M",["Mezzo","Baritone"],"Ballad"],
+["Mama Will Provide","Once on This Island","Asaka","Solo","F",["Alto"],"Uptempo"],
+["Poor Unfortunate Souls","The Little Mermaid","Ursula","Solo","F",["Alto"],"Uptempo"],
+["Ireland","Legally Blonde","Paulette","Solo","F",["Mezzo"],"Uptempo"],
+["Legally Blonde","Legally Blonde","Elle & Emmett","Duet","F + M",["Mezzo","Tenor"],"Ballad"],
+["Make 'Em Laugh","Singin' in the Rain","Cosmo","Solo","M",["Baritone"],"Uptempo"],
+["Sisters","White Christmas","Betty & Judy","Duet","F + F",["Mezzo","Soprano"],"Uptempo"],
+["Those You've Known","Spring Awakening","Moritz, Ilse & Melchior","Trio","F + M + M",["Mezzo","Tenor"],"Ballad"],
+["Hakuna Matata","The Lion King","Timon, Pumbaa & Simba","Trio","M + M + M",["Tenor","Baritone"],"Uptempo"],
+["Tonight (Quintet)","West Side Story","Tony, Maria, Anita, Riff & Bernardo","4+","5: 2F + 3M",["Soprano","Mezzo","Tenor","Baritone"],"Uptempo"],
+["Gee, Officer Krupke","West Side Story","Action & the Jets","4+","M ensemble",["Tenor","Baritone"],"Uptempo"],
+["America","West Side Story","Anita, Rosalia & the Shark girls","4+","F ensemble",["Mezzo","Soprano"],"Uptempo"],
+["One Day More","Les Misérables","Principals & company","4+","F + M ensemble",["Soprano","Mezzo","Tenor","Baritone","Bass"],"Uptempo"],
+["In My Life","Les Misérables","Cosette, Valjean, Marius & Éponine","4+","4: 2F + 2M",["Soprano","Mezzo","Tenor","Baritone"],"Ballad"],
+["Red and Black","Les Misérables","Enjolras, Marius & the students","4+","M ensemble",["Tenor","Baritone"],"Uptempo"],
+["Do You Hear the People Sing?","Les Misérables","Enjolras & company","4+","F + M ensemble",["Tenor","Baritone","Mezzo","Soprano"],"Uptempo"],
+["Seasons of Love","Rent","Company with soloists","4+","F + M ensemble",["Soprano","Mezzo","Alto","Tenor","Baritone"],"Ballad"],
+["La Vie Bohème","Rent","Company","4+","F + M ensemble",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["Will I?","Rent","Steve & company","4+","F + M ensemble",["Tenor","Baritone","Mezzo"],"Ballad"],
+["Cell Block Tango","Chicago","Velma & the six merry murderesses","4+","6F",["Mezzo","Alto"],"Uptempo"],
+["Ex-Wives","SIX","The six queens","4+","6F",["Mezzo","Alto","Soprano"],"Uptempo"],
+["Six","SIX","The six queens","4+","6F",["Mezzo","Alto","Soprano"],"Uptempo"],
+["(You're) Timeless to Me / Mama, I'm a Big Girl Now","Hairspray","Tracy, Penny, Amber & their mothers","4+","6F",["Mezzo","Alto","Soprano"],"Uptempo"],
+["You Can't Stop the Beat","Hairspray","Company","4+","F + M ensemble",["Mezzo","Alto","Tenor","Baritone"],"Uptempo"],
+["The Telephone Hour","Bye Bye Birdie","The teenagers","4+","F + M ensemble",["Soprano","Mezzo","Tenor","Baritone"],"Uptempo"],
+["Lida Rose / Will I Ever Tell You?","The Music Man","Barbershop quartet & Marian","4+","5: 1F + 4M",["Soprano","Tenor","Baritone","Bass"],"Ballad"],
+["Pick-a-Little, Talk-a-Little","The Music Man","Eulalie & the town ladies","4+","F ensemble",["Soprano","Mezzo","Alto"],"Uptempo"],
+["Rock Island","The Music Man","The traveling salesmen","4+","M ensemble",["Tenor","Baritone","Bass"],"Uptempo"],
+["Everybody Ought to Have a Maid","A Funny Thing Happened on the Way to the Forum","Pseudolus, Senex, Lycus & Hysterium","4+","4M",["Tenor","Baritone","Bass"],"Uptempo"],
+["Prologue: Into the Woods","Into the Woods","Company","4+","F + M ensemble",["Soprano","Mezzo","Alto","Tenor","Baritone"],"Uptempo"],
+["Your Fault","Into the Woods","Jack, Baker, Witch, Little Red & Cinderella","4+","5: 3F + 2M",["Soprano","Mezzo","Alto","Tenor","Baritone"],"Uptempo"],
+["No One Is Alone","Into the Woods","Cinderella, Little Red, Baker & Jack","4+","4: 2F + 2M",["Soprano","Mezzo","Tenor","Baritone"],"Ballad"],
+["A Weekend in the Country","A Little Night Music","Company","4+","F + M ensemble",["Soprano","Mezzo","Tenor","Baritone"],"Uptempo"],
+["Side by Side by Side","Company","Bobby & the couples","4+","F + M ensemble",["Soprano","Mezzo","Tenor","Baritone"],"Uptempo"],
+["Sunday","Sunday in the Park with George","Company","4+","F + M ensemble",["Soprano","Mezzo","Alto","Tenor","Baritone","Bass"],"Ballad"],
+["Our Time","Merrily We Roll Along","Frank, Charley, Mary & company","4+","F + M ensemble",["Mezzo","Tenor","Baritone"],"Ballad"],
+["The Story of Tonight","Hamilton","Hamilton, Laurens, Lafayette & Mulligan","4+","4M",["Tenor","Baritone"],"Ballad"],
+["Aaron Burr, Sir","Hamilton","Hamilton, Burr, Laurens, Lafayette & Mulligan","4+","5M",["Tenor","Baritone"],"Uptempo"],
+["My Shot","Hamilton","Hamilton & company","4+","F + M ensemble",["Baritone","Tenor","Mezzo"],"Uptempo"],
+["Non-Stop","Hamilton","Principals & company","4+","F + M ensemble",["Mezzo","Soprano","Tenor","Baritone"],"Uptempo"],
+["You Will Be Found","Dear Evan Hansen","Evan & company","4+","F + M ensemble",["Tenor","Mezzo","Baritone"],"Ballad"],
+["Disappear","Dear Evan Hansen","Connor, Evan, Alana, Jared & the Murphys","4+","F + M ensemble",["Tenor","Mezzo","Baritone"],"Uptempo"],
+["Light","Next to Normal","Company","4+","6: 2F + 4M",["Mezzo","Tenor","Baritone"],"Ballad"],
+["One (Finale)","A Chorus Line","Company","4+","F + M ensemble",["Mezzo","Alto","Tenor","Baritone"],"Uptempo"],
+["Tradition","Fiddler on the Roof","Tevye & company","4+","F + M ensemble",["Soprano","Mezzo","Alto","Tenor","Baritone","Bass"],"Uptempo"],
+["To Life","Fiddler on the Roof","Tevye, Lazar Wolf & the men","4+","M ensemble",["Tenor","Baritone","Bass"],"Uptempo"],
+["Seize the Day","Newsies","Jack, Davey & the newsies","4+","M ensemble",["Tenor","Baritone"],"Uptempo"],
+["King of New York","Newsies","Katherine, Davey, Race & the newsies","4+","F + M ensemble",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["When I Grow Up","Matilda","The children","4+","F + M ensemble",["Soprano","Mezzo"],"Ballad"],
+["Revolting Children","Matilda","The children","4+","F + M ensemble",["Mezzo","Tenor"],"Uptempo"],
+["Way Down Hadestown","Hadestown","Hermes, Persephone & company","4+","F + M ensemble",["Alto","Mezzo","Baritone"],"Uptempo"],
+["Summer Nights","Grease","Danny, Sandy, the T-Birds & Pink Ladies","4+","F + M ensemble",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["Greased Lightnin'","Grease","Kenickie & the T-Birds","4+","M ensemble",["Tenor","Baritone"],"Uptempo"],
+["We Go Together","Grease","Company","4+","F + M ensemble",["Mezzo","Alto","Tenor","Baritone"],"Uptempo"],
+["Notes / Prima Donna","The Phantom of the Opera","Managers, Raoul, Carlotta, Giry, Meg & Piangi","4+","7: 3F + 4M",["Soprano","Mezzo","Tenor","Baritone","Bass"],"Uptempo"],
+["Masquerade","The Phantom of the Opera","Company","4+","F + M ensemble",["Soprano","Mezzo","Tenor","Baritone","Bass"],"Uptempo"],
+["Be Our Guest","Beauty and the Beast","Lumière & company","4+","F + M ensemble",["Tenor","Soprano","Mezzo","Baritone"],"Uptempo"],
+["Under the Sea","The Little Mermaid","Sebastian & company","4+","F + M ensemble",["Baritone","Tenor","Mezzo"],"Uptempo"],
+["Circle of Life","The Lion King","Rafiki & company","4+","F + M ensemble",["Alto","Mezzo","Tenor","Baritone"],"Ballad"],
+["Freak Flag","Shrek the Musical","The fairytale creatures","4+","F + M ensemble",["Mezzo","Tenor","Baritone"],"Uptempo"],
+["Omigod You Guys","Legally Blonde","Elle & the Delta Nus","4+","F ensemble",["Mezzo","Soprano"],"Uptempo"],
+["Bend and Snap","Legally Blonde","Elle, Paulette & company","4+","F + M ensemble",["Mezzo","Alto"],"Uptempo"],
+["Consider Yourself","Oliver!","The Artful Dodger, Oliver & company","4+","F + M ensemble",["Tenor","Soprano","Mezzo","Baritone"],"Uptempo"],
+["It's the Hard-Knock Life","Annie","Annie & the orphans","4+","F ensemble",["Mezzo"],"Uptempo"],
+["You're Never Fully Dressed Without a Smile","Annie","The orphans","4+","F ensemble",["Mezzo"],"Uptempo"],
+["Do-Re-Mi","The Sound of Music","Maria & the von Trapp children","4+","F + M ensemble",["Soprano","Mezzo"],"Uptempo"],
+["So Long, Farewell","The Sound of Music","The von Trapp children","4+","F + M ensemble",["Soprano","Mezzo"],"Uptempo"]
+];
+const songs=D.map(r=>{const c=r[4];const g=/F/.test(c)&&/M/.test(c)?"Mixed":(/F/.test(c)?"Female":"Male");return{t:r[0],s:r[1],r:r[2],v:r[3],c,g,vo:r[5],st:r[6]}});
+const state={voicing:"All",gender:"All",voice:"All",style:"All",q:""};
+const opts={voicing:["All","Solo","Duet","Trio","4+"],gender:["All","Female","Male","Mixed"],voice:["All","Soprano","Mezzo","Alto","Tenor","Baritone","Bass"],style:["All","Ballad","Uptempo"]};
+const labels={voicing:{"4+":"Group (4+)"},gender:{Female:"Female-identifying",Male:"Male-identifying",Mixed:"Mixed group"}};
+function chips(key){const el=document.getElementById("f-"+key);el.innerHTML="";opts[key].forEach(o=>{const b=document.createElement("button");b.type="button";b.className="chip";b.setAttribute("aria-pressed",state[key]===o);const lab=(labels[key]&&labels[key][o])||o;b.innerHTML=(key==="voice"&&o!=="All"?`<span class="dot" style="background:${VC[o]}"></span>`:"")+lab;b.onclick=()=>{state[key]=o;render()};el.appendChild(b)})}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function render(){Object.keys(opts).forEach(chips);const q=state.q.toLowerCase();
+const out=songs.filter(x=>(state.voicing==="All"||x.v===state.voicing)&&(state.gender==="All"||x.g===state.gender)&&(state.voice==="All"||x.vo.includes(state.voice))&&(state.style==="All"||x.st===state.style)&&(!q||(x.t+" "+x.s+" "+x.r).toLowerCase().includes(q)));
+document.getElementById("count").textContent=out.length+(out.length===1?" song":" songs");
+const L=document.getElementById("list");
+if(!out.length){L.innerHTML='<li class="empty">No songs match these filters. Try clearing one.</li>';return}
+L.innerHTML=out.map(x=>{const band=x.vo.length>1?`linear-gradient(${x.vo.map(v=>VC[v]).join(",")})`:VC[x.vo[0]];
+return `<li class="song" style="--bandc:${band}"><div class="t">${esc(x.t)}</div><div class="s"><i>${esc(x.s)}</i>, ${esc(x.r)}</div><div class="meta">${x.vo.map(v=>`<span class="tag"><span class="dot" style="background:${VC[v]}"></span>${v}</span>`).join("")}<span class="tag cast">${x.v==="4+"?"Group":x.v} (${x.c})</span><span class="tag cast">${x.st}</span></div></li>`}).join("")}
+document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render()});
+document.getElementById("reset").onclick=()=>{Object.assign(state,{voicing:"All",gender:"All",voice:"All",style:"All",q:""});document.getElementById("q").value="";render()};
+document.querySelector("header p").textContent=songs.length+" well-known musical theater songs, sorted by voice type, number of singers, and how the roles were originally cast. Tap the filters to narrow it down.";
+render();
+</script>
+</body>
+</html>
